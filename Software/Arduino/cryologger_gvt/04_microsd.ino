@@ -16,7 +16,7 @@ void configureSd()
       DEBUG_PRINTLN("Warning - microSD failed to initialize. Reattempting...");
 
       // Display OLED messages(s)
-      displayErrorMicrosd1();
+      displayError("microSD");
 
       // Delay between initialization attempts
       myDelay(2000);
@@ -27,7 +27,7 @@ void configureSd()
         online.microSd = false; // Set flag
 
         // Display OLED messages(s)
-        displayErrorMicrosd2();
+        displayErrorReattempt("microSD");
 
         // Disable power to Qwiic connector
         qwiicPowerOff();
@@ -39,6 +39,7 @@ void configureSd()
       {
         online.microSd = true; // Set flag
         DEBUG_PRINTLN("Info - microSD initialized.");
+
         // Display OLED messages(s)
         displaySuccess();
       }
@@ -55,7 +56,7 @@ void configureSd()
   {
     DEBUG_PRINTLN("Info - microSD already initialized.");
   }
-  
+
   // Stop the loop timer
   timer.microSd = millis() - loopStartTime;
 }

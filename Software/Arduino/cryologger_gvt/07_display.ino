@@ -45,28 +45,6 @@ void resetOled()
 #endif
 }
 
-void displayWelcome()
-{
-  if (online.oled)
-  {
-    enablePullups(); // Enable internal I2C pull-ups
-    oled.erase();
-    oled.setCursor(0, 0);
-    oled.print("Cryologger GVT #");
-    oled.print(ID);
-    oled.print("_");
-    oled.print(UNIT);
-    oled.setCursor(0, 10);
-    oled.print(dateTimeBuffer);
-    oled.setCursor(0, 20);
-    oled.print("Voltage:");
-    oled.setCursor(54, 20);
-    oled.print(readVoltage(), 2);
-    oled.display();
-    disablePullups();
-    myDelay(4000);
-  }
-}
 
 void displayInitialize(char *device)
 {
@@ -114,6 +92,65 @@ void displayReattempt()
     oled.text(0, 10, "Failed! Reattempting...");
     oled.display();
     disablePullups();
+  }
+}
+
+void displayError(char *device)
+{
+  enablePullups();
+  char displayBuffer[24];
+  sprintf(displayBuffer, "Error %s...", device);
+  oled.erase();
+  oled.text(0, 0, displayBuffer);
+  oled.text(0, 10, "failed to initialize!");
+  oled.text(0, 20, "Reattempting...");
+  oled.display();
+  disablePullups();
+  myDelay(4000);
+}
+
+void displayErrorReattempt(char *device)
+{
+  enablePullups();
+  char displayBuffer[24];
+  sprintf(displayBuffer, "Error %s...", device);
+  oled.erase();
+  oled.text(0, 0, displayBuffer);
+  oled.text(0, 10, "second attempt failed!");
+  oled.display();
+  disablePullups();
+  myDelay(4000);
+}
+
+void displayWelcome()
+{
+  if (online.oled)
+  {
+    enablePullups(); // Enable internal I2C pull-ups
+    oled.erase();
+    oled.setCursor(0, 0);
+    oled.print("Cryologger GVT");
+    oled.setCursor(0, 10);
+    oled.print("SWVER: ");
+    oled.print(SOFTWARE_VERSION);
+    oled.setCursor(0, 20);
+    oled.print("HWVER: ");
+    oled.print(HARDWARE_VERSION);
+    oled.display();
+    myDelay(8000);
+    oled.erase();
+    oled.setCursor(0, 0);
+    oled.print(dateTimeBuffer);
+    oled.setCursor(0, 10);
+    oled.print("UID: ");
+    oled.print(UID);
+    oled.setCursor(0, 20);
+    oled.print("Voltage: ");
+    //oled.setCursor(54, 20);
+    oled.print(readVoltage(), 2);
+    oled.display();
+    disablePullups();
+    myDelay(8000);
   }
 }
 
@@ -240,39 +277,15 @@ void displayRtcOffset(long drift)
   }
 }
 
-void displayErrorMicrosd1()
-{
-  enablePullups();
-  oled.erase();
-  oled.text(0, 0, "Error: microSD");
-  oled.text(0, 10, "failed to initialize!");
-  oled.text(0, 20, "Reattempting...");
-  oled.display();
-  disablePullups();
-  myDelay(4000);
-}
-
-void displayErrorMicrosd2()
-{
-  enablePullups();
-  oled.erase();
-  oled.text(0, 0, "Error: microSD");
-  oled.text(0, 10, "second attempt failed!");
-  oled.display();
-  disablePullups();
-  myDelay(4000);
-}
-
-void displayScreen1()
+void displayLoggingScreen1()
 {
   if (online.oled)
   {
     enablePullups();
     char displayBuffer1[32];
     char displayBuffer2[32];
-    sprintf(displayBuffer1, "File size: %d", (bytesWritten / 1024));
-    sprintf(displayBuffer2, "Max buffer: %d", maxBufferBytes);
-
+    sprintf(displayBuffer1, "File size: %d KB", (bytesWritten / 1024));
+    sprintf(displayBuffer2, "Max buffer: %d B", maxBufferBytes);
     oled.erase();
     oled.text(0, 0, logFileName);
     oled.text(0, 10, displayBuffer1);
@@ -282,7 +295,7 @@ void displayScreen1()
   }
 }
 
-void displayScreen2()
+void displayLoggingScreen2()
 {
   if (online.oled)
   {
@@ -297,12 +310,32 @@ void displayScreen2()
     oled.print("Voltage:");
     oled.setCursor(54, 10);
     oled.print(readVoltage(), 2);
-    //oled.setCursor(90, 10);
-    //oled.print(reading);
     oled.setCursor(0, 20);
     oled.print("Duration:");
     oled.setCursor(60, 20);
     oled.print((rtc.getEpoch() - logStartTime));
+    oled.display();
+    disablePullups();
+  }
+}
+
+void displayLoggingScreen3()
+{
+  if (online.oled)
+  {
+    // Get current date and time
+    getDateTime();
+
+    enablePullups();
+    oled.erase();
+    oled.setCursor(0, 0);
+    oled.print("Messages received:");
+    oled.setCursor(0, 10);
+    oled.print("SFRBX: ");
+    oled.print(counterSfrbx);
+    oled.setCursor(0, 20);
+    oled.print("RAWX: ");
+    oled.print(counterRawx);
     oled.display();
     disablePullups();
   }
