@@ -73,8 +73,8 @@ void configureGnss()
       response &= gnss.newCfgValset8(UBLOX_CFG_I2C_ENABLED, 1);    // Enable I2C
       response &= gnss.addCfgValset8(UBLOX_CFG_SPI_ENABLED, 0);    // Disable SPI
       response &= gnss.addCfgValset8(UBLOX_CFG_UART1_ENABLED, 0);  // Disable UART1
-      response &= gnss.addCfgValset8(UBLOX_CFG_UART2_ENABLED, 1);  // Enable UART2
-      response &= gnss.addCfgValset8(UBLOX_CFG_USB_ENABLED, 0);    // Disable USB
+      response &= gnss.addCfgValset8(UBLOX_CFG_UART2_ENABLED, 0);  // Disable UART2
+      response &= gnss.addCfgValset8(UBLOX_CFG_USB_ENABLED, 1);    // Enable USB
       response &= gnss.sendCfgValset(); // Send the packet using sendCfgValset
 
       if (response)
@@ -118,8 +118,10 @@ void configureGnss()
     gnss.saveConfigSelective(VAL_CFG_SUBSEC_IOPORT);  // Save communications port settings to flash and BBR
     gnss.setNavigationFrequency(1);                   // Produce 1 navigation solution(s) per second
     gnss.setAutoPVT(true);                            // Enable automatic NAV-PVT messages
-    gnss.setAutoRXMSFRBX(true, false);                // Enable automatic RXM-SFRBX messages
-    gnss.setAutoRXMRAWX(true, false);                 // Enable automatic RXM-RAWX messages
+    gnss.setAutoRXMSFRBXcallbackPtr(&newSfrbx);       // Enable automatic RXM SFRBX messages with callback
+    gnss.setAutoRXMRAWXcallbackPtr(&newRawx);         // Enable automatic RXM RAWX messages with callback
+    //gnss.setAutoRXMSFRBX(true, false);                // Enable automatic RXM-SFRBX messages
+    //gnss.setAutoRXMRAWX(true, false);                 // Enable automatic RXM-RAWX messages
     gnss.logRXMSFRBX();                               // Enable RXM-SFRBX data logging
     gnss.logRXMRAWX();                                // Enable RXM-RAWX data logging
   }
@@ -147,14 +149,14 @@ void syncRtc()
     disablePullups();
 
     // Clear flag
-    rtcSyncFlag = false;
+    flagRtcSync = false;
     rtcDrift = 0;
-    fixCounter = 0;
+    counterFix = 0;
 
     DEBUG_PRINTLN("Info - Attempting to sync RTC with GNSS...");
 
     // Attempt to acquire a valid GNSS position fix for up to 5 minutes
-    while (!rtcSyncFlag && millis() - loopStartTime < gnssTimeout * 1000UL)
+    while (!flagRtcSync && millis() - loopStartTime < gnssTimeout * 1000UL)
     {
       petDog(); // Reset WDT
 
@@ -185,16 +187,16 @@ void syncRtc()
         // Check if date and time are valid
         if (fixType >= 2 && dateValidFlag && timeValidFlag)
         {
-          fixCounter++;
+          counterFix++;
 
           // Collect a minimum number of valid positions before synchronizing RTC with GNSS
-          if (fixCounter >= 10)
+          if (counterFix >= 10)
           {
             unsigned long rtcEpoch = rtc.getEpoch();        // Get RTC epoch time
             unsigned long gnssEpoch = gnss.getUnixEpoch();  // Get GNSS epoch time
             rtc.setEpoch(gnssEpoch);                        // Set RTC date and time
             rtcDrift = gnssEpoch - rtcEpoch;                // Calculate RTC drift
-            rtcSyncFlag = true;                             // Set flag
+            flagRtcSync = true;                             // Set flag
 
             DEBUG_PRINT("Info - RTC time synced to "); printDateTime();
             DEBUG_PRINT("Info - RTC drift: "); DEBUG_PRINTLN(rtcDrift);
@@ -213,7 +215,7 @@ void syncRtc()
         }
       }
     }
-    if (!rtcSyncFlag)
+    if (!flagRtcSync)
     {
       DEBUG_PRINTLN("Warning - Unable to sync RTC!");
 
@@ -224,7 +226,7 @@ void syncRtc()
   else
   {
     DEBUG_PRINTLN("Warning - GNSS offline!");
-    rtcSyncFlag = false; // Clear flag
+    flagRtcSync = false; // Clear flag
   }
 
   // Stop the loop timer
@@ -242,7 +244,8 @@ void logGnss()
   bool displayDebug = true;
   byte displayCounter = 0;
   bool displayToggle = false;
-
+  byte displayScreen = 1;
+    
   // Record logging start time
   logStartTime = rtc.getEpoch();
 
@@ -272,9 +275,13 @@ void logGnss()
 
     // Reset counters
     bytesWritten = 0;
-    writeFailCounter = 0;
-    syncFailCounter = 0;
-    closeFailCounter = 0;
+    counterSdWriteFail = 0;
+    counterSdSyncFail = 0;
+    counterSdCloseFail = 0;
+    counterSfrbx = 0;
+    counterRawx = 0;
+    
+
 
     gnss.clearFileBuffer();         // Clear file buffer
     gnss.clearMaxFileBufferAvail(); // Reset max file buffer size
@@ -289,6 +296,9 @@ void logGnss()
 
       // Check for the arrival of new data and process it
       gnss.checkUblox();
+
+      // Check if any callbacks are waiting to be processed
+      gnss.checkCallbacks();
 
       // Check if sdWriteSize bytes are waiting in the buffer
       while (gnss.fileBufferAvailable() >= sdWriteSize)
@@ -309,7 +319,7 @@ void logGnss()
         if (!logFile.write(myBuffer, sdWriteSize))
         {
           DEBUG_PRINTLN("Warning - Failed to write to log file!");
-          writeFailCounter++; // Count number of failed writes to microSD
+          counterSdWriteFail++; // Count number of failed writes to microSD
         }
 
         // Update bytesWritten
@@ -323,13 +333,13 @@ void logGnss()
       }
 
       // Periodically print number of bytes written
-      if (millis() - previousMillis > 10000)
+      if (millis() - previousMillis > 5000)
       {
         // Sync the log file
         if (!logFile.sync())
         {
           DEBUG_PRINTLN("Warning - Failed to sync log file!");
-          syncFailCounter++; // Count number of failed file syncs
+          counterSdSyncFail++; // Count number of failed file syncs
         }
 
         // Print number of bytes written to SD card
@@ -337,7 +347,11 @@ void logGnss()
 
         // Get max file buffer size
         maxBufferBytes = gnss.getMaxFileBufferAvail();
-        DEBUG_PRINT("Max buffer: "); DEBUG_PRINTLN(maxBufferBytes);
+        DEBUG_PRINT("Max buffer: "); DEBUG_PRINT(maxBufferBytes);
+
+        // Print how many message groups have been received
+        DEBUG_PRINT(" SFRBX: "); DEBUG_PRINT(counterSfrbx);
+        DEBUG_PRINT(" RAWX: "); DEBUG_PRINTLN(counterRawx);
 
         // Warn if fileBufferSize was more than 80% full
         if (maxBufferBytes > ((fileBufferSize / 5) * 4))
@@ -348,19 +362,24 @@ void logGnss()
         // Display logging information to OLED display
         if (online.oled && displayDebug)
         {
-          // After a specified number of cycles put OLED to sleep (1.2 uA)
-          if (displayCounter <= 100) // Use >= 0 for testing and <= 100 for deployment
+          // Put OLED to sleep (1.2 uA) after a specified number of cycles 
+          if (displayCounter >= 0) // Use >= 0 for testing and <= 100 for deployment
           {
             displayCounter++;
-            if (!displayToggle)
+            if (displayScreen == 1)
             {
-              displayScreen1(); // Display information panel 1
-              displayToggle = !displayToggle;
+              displayLoggingScreen1(); // Display information panel 1
+              displayScreen = 2;
             }
-            else
+            else if (displayScreen == 2)
             {
-              displayScreen2(); // Display information panel 2
-              displayToggle = !displayToggle;
+              displayLoggingScreen2(); // Display information panel 2
+              displayScreen = 3;
+            }
+            else if (displayScreen == 3)
+            {
+              displayLoggingScreen3(); // Display information panel 3
+              displayScreen = 1;
             }
           }
           else
@@ -408,13 +427,13 @@ void logGnss()
     }
 
     // Print total number of bytes written to SD card
-    DEBUG_PRINT("Info - Total bytes written is "); DEBUG_PRINTLN(bytesWritten);
+    DEBUG_PRINT("Info - Total bytes written: "); DEBUG_PRINTLN(bytesWritten);
 
     // Sync the log file
     if (!logFile.sync())
     {
       DEBUG_PRINTLN("Warning - Failed to sync log file!");
-      syncFailCounter++; // Count number of failed file syncs
+      counterSdSyncFail++; // Count number of failed file syncs
     }
 
     // Update file access timestamps
@@ -424,7 +443,7 @@ void logGnss()
     if (!logFile.close())
     {
       DEBUG_PRINTLN("Warning - Failed to close log file!");
-      closeFailCounter++; // Count number of failed file closes
+      counterSdCloseFail++; // Count number of failed file closes
     }
   }
   else

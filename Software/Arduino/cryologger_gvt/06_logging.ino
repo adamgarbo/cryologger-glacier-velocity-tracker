@@ -1,8 +1,8 @@
 // Create timestamped log file name
 void getLogFileName()
 {
-  sprintf(logFileName, "%s_%d_20%02d%02d%02d_%02d%02d%02d.ubx",
-          ID, UNIT, rtc.year, rtc.month, rtc.dayOfMonth,
+  sprintf(logFileName, "%s_20%02d%02d%02d_%02d%02d%02d.ubx",
+          UID, rtc.year, rtc.month, rtc.dayOfMonth,
           rtc.hour, rtc.minute, rtc.seconds);
 
   DEBUG_PRINT("Info - logFileName: "); DEBUG_PRINTLN(logFileName);
@@ -12,9 +12,9 @@ void getLogFileName()
 void createDebugFile()
 {
   // Debug log file name
-  sprintf(debugFileName, "%s_%d_debug.csv", ID, UNIT);
+  sprintf(debugFileName, "%s_debug.csv", UID);
 
-  // Create debug log file
+  // Create debug log filewritte
   // O_CREAT - Create the file if it does not exist
   // O_APPEND - Seek to the end of the file prior to each write
   // O_WRITE - Open the file for writing
@@ -31,7 +31,7 @@ void createDebugFile()
   // Write header to file
   debugFile.println("datetime,battery,online_microsd,online_gnss,online_log_gnss,online_log_debug,"
                     "timer_battery,timer_microsd,timer_gnss,timer_sync_rtc,timer_log_gnss,timer_log_debug,"
-                    "rtc_sync_flag,rtc_drift,bytes_written,max_buffer_bytes,wdt_counter_max,"
+                    "rtc_sync_flag,rtc_drift,bytes_written,max_buffer_bytes,counter_sfrbx,counter_rawx,counter_wdt_max,"
                     "write_fail_counter,sync_fail_counter,close_fail_counter,debug_counter");
 
   // Sync the debug file
@@ -57,7 +57,7 @@ void logDebug()
   unsigned long loopStartTime = millis();
 
   // Increment debug counter
-  debugCounter++;
+  counterDebug++;
 
   // Open debug file for writing
   if (!debugFile.open(debugFileName, O_APPEND | O_WRITE))
@@ -91,21 +91,23 @@ void logDebug()
   debugFile.print(timer.syncRtc);       debugFile.print(",");
   debugFile.print(timer.logGnss);       debugFile.print(",");
   debugFile.print(timer.logDebug);      debugFile.print(",");
-  debugFile.print(rtcSyncFlag);         debugFile.print(",");
+  debugFile.print(flagRtcSync);         debugFile.print(",");
   debugFile.print(rtcDrift);            debugFile.print(",");
   debugFile.print(bytesWritten);        debugFile.print(",");
   debugFile.print(maxBufferBytes);      debugFile.print(",");
-  debugFile.print(wdtCounterMax);       debugFile.print(",");
-  debugFile.print(writeFailCounter);    debugFile.print(",");
-  debugFile.print(syncFailCounter);     debugFile.print(",");
-  debugFile.print(closeFailCounter);    debugFile.print(",");
-  debugFile.println(debugCounter);
+  debugFile.print(counterSfrbx);        debugFile.print(",");
+  debugFile.print(counterRawx);         debugFile.print(",");
+  debugFile.print(counterWdtMax);       debugFile.print(",");
+  debugFile.print(counterSdWriteFail);    debugFile.print(",");
+  debugFile.print(counterSdSyncFail);     debugFile.print(",");
+  debugFile.print(counterSdCloseFail);    debugFile.print(",");
+  debugFile.println(counterDebug);
 
   // Sync the debug file
   if (!debugFile.sync())
   {
     DEBUG_PRINTLN("Warning - Failed to sync debug file.");
-    syncFailCounter++; // Count number of failed file syncs
+    counterSdSyncFail++; // Count number of failed file syncs
   }
 
   // Update file access timestamps
@@ -115,8 +117,10 @@ void logDebug()
   if (!debugFile.close())
   {
     DEBUG_PRINTLN("Warning - Failed to close debug file.");
-    closeFailCounter++; // Count number of failed file closes
+    counterSdCloseFail++; // Count number of failed file closes
   }
+
+  DEBUG_PRINT("Info - Wrote to debug file: ");
 
   // Print debugging information
   DEBUG_PRINT(dateTime);          DEBUG_PRINT(",");
@@ -131,15 +135,17 @@ void logDebug()
   DEBUG_PRINT(timer.syncRtc);     DEBUG_PRINT(",");
   DEBUG_PRINT(timer.logGnss);     DEBUG_PRINT(",");
   DEBUG_PRINT(timer.logDebug);    DEBUG_PRINT(",");
-  DEBUG_PRINT(rtcSyncFlag);       DEBUG_PRINT(",");
+  DEBUG_PRINT(flagRtcSync);       DEBUG_PRINT(",");
   DEBUG_PRINT(rtcDrift);          DEBUG_PRINT(",");
   DEBUG_PRINT(bytesWritten);      DEBUG_PRINT(",");
   DEBUG_PRINT(maxBufferBytes);    DEBUG_PRINT(",");
-  DEBUG_PRINT(wdtCounterMax);     DEBUG_PRINT(",");
-  DEBUG_PRINT(writeFailCounter);  DEBUG_PRINT(",");
-  DEBUG_PRINT(syncFailCounter);   DEBUG_PRINT(",");
-  DEBUG_PRINT(closeFailCounter);  DEBUG_PRINT(",");
-  DEBUG_PRINTLN(debugCounter);
+  DEBUG_PRINT(counterSfrbx);      DEBUG_PRINT(",");
+  DEBUG_PRINT(counterRawx);       DEBUG_PRINT(",");
+  DEBUG_PRINT(counterWdtMax);     DEBUG_PRINT(",");
+  DEBUG_PRINT(counterSdWriteFail);  DEBUG_PRINT(",");
+  DEBUG_PRINT(counterSdSyncFail);   DEBUG_PRINT(",");
+  DEBUG_PRINT(counterSdCloseFail);  DEBUG_PRINT(",");
+  DEBUG_PRINTLN(counterDebug);
 
   // Stop the loop timer
   timer.logDebug = millis() - loopStartTime;
