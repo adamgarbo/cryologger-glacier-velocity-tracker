@@ -121,7 +121,7 @@ void setAwakeAlarm()
   //DEBUG_PRINT(F("Debug - Logging alarm mode: "));  DEBUG_PRINTLN(alarmModeLogging);
 
   // Print the next RTC alarm date and time
-  DEBUG_PRINT("Info - Logging until "); printAlarm();
+  DEBUG_PRINT("Info - Logging until: "); printAlarm();
 }
 
 // Set sleep alarm(s)
@@ -177,8 +177,8 @@ void setSleepAlarm()
   }
 
   // Print the next RTC alarm date and time
-  DEBUG_PRINT("Info - Current time "); printDateTime();
-  DEBUG_PRINT("Info - Sleeping until "); printAlarm();
+  DEBUG_PRINT("Info - Current datetime: "); printDateTime();
+  DEBUG_PRINT("Info - Sleeping until: "); printAlarm();
 }
 
 // Read the RTC
@@ -226,15 +226,15 @@ void printAlarm()
   DEBUG_PRINTLN(alarmBuffer);
 }
 
+// Check if a date change has occurred
 void checkDate()
 {
   rtc.getTime(); // Get the RTC's date and time
   if (firstTimeFlag)
   {
-    
     dateCurrent = rtc.dayOfMonth;
   }
   dateNew = rtc.dayOfMonth;
-  Serial.print("Current date: "); Serial.print(dateCurrent);
-  Serial.print(" New date: "); Serial.println(dateNew);
+  //DEBUG_PRINT("Current date: "); DEBUG_PRINT(dateCurrent);
+  //DEBUG_PRINT(" New date: "); DEBUG_PRINTLN(dateNew);
 }

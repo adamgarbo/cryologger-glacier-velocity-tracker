@@ -22,18 +22,22 @@ void printLoggingSettings()
   DEBUG_PRINTLN("Logging Configuration");
   printLine();
 
-  DEBUG_PRINT("Logging mode: "); printTab(3);
+  DEBUG_PRINT("Logging mode: "); printTab(2);
   if (operationMode == 1)
   {
     DEBUG_PRINTLN("Daily");
-    DEBUG_PRINT("Start: "); printTab(4);  DEBUG_PRINT(alarmStartHour); DEBUG_PRINT(":"); DEBUG_PRINTLN(alarmStartMinute);
-    DEBUG_PRINT("Stop: "); printTab(4);  DEBUG_PRINT(alarmStopHour); DEBUG_PRINT(":"); DEBUG_PRINTLN(alarmStopMinute);
+    char dailyBuffer[100];
+    sprintf(dailyBuffer, "Logging start:\t\t%02d:%02d:00 UTC\nLogging stop:\t\t%02d:%02d:00 UTC",
+            alarmStartHour, alarmStartMinute, alarmStopHour, alarmStopMinute);
+    DEBUG_PRINTLN(dailyBuffer);
   }
   if (operationMode == 2)
   {
     DEBUG_PRINTLN("Rolling");
-    DEBUG_PRINT("Logging duration: "); printTab(2);  DEBUG_PRINT(alarmAwakeHours); DEBUG_PRINT(" hours "); DEBUG_PRINT(alarmAwakeMinutes); DEBUG_PRINTLN(" minutes ");
-    DEBUG_PRINT("Sleep duration: "); printTab(2);  DEBUG_PRINT(alarmSleepHours); DEBUG_PRINT(" hours "); DEBUG_PRINT(alarmSleepMinutes); DEBUG_PRINTLN(" minutes ");
+    char rollingBuffer[100];
+    sprintf(rollingBuffer, "Logging duration:\t%d hours %d minutes\nSleep duration:\t\t%d hours %d minutes",
+            alarmAwakeHours, alarmAwakeMinutes, alarmSleepHours, alarmSleepMinutes);
+    DEBUG_PRINTLN(rollingBuffer);
   }
   if (operationMode == 3)
   {
@@ -46,7 +50,7 @@ void printLoggingSettings()
 void printGnssSettings()
 {
   printLine();
-  DEBUG_PRINTLN("u-blox Configuration");
+  DEBUG_PRINTLN("u-blox ZED-F9P Configuration");
   printLine();
 
   // Create custom packet
@@ -327,7 +331,6 @@ void clearTimers()
   // Clear timer structure
   memset(&timer, 0x00, sizeof(timer));
 }
-
 
 void printTimers()
 {

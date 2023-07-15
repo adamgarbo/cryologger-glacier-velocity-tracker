@@ -44,7 +44,7 @@ void goToSleep()
   {
     alarmFlag = false; // Clear flag
     //DEBUG_PRINTLN("Info - Entering deep sleep...");
-    //DEBUG_PRINT("Info - Sleeping until "); printAlarm();
+    //DEBUG_PRINT("Info - Sleeping until: "); printAlarm();
   }
 
   // Display OLED messages(s)
